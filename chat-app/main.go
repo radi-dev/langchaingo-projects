@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/llms/ollama"
 	"github.com/tmc/langchaingo/memory"
 )
@@ -21,11 +21,13 @@ func main() {
 
 	chatMemory := memory.NewConversationBuffer()
 
+	chain := chains.NewConversation(llm, chatMemory)
+
 	scanner := bufio.NewScanner(os.Stdin)
 	ctx := context.Background()
 
 	for {
-		fmt.Print("Your turn:")
+		fmt.Print("Your turn: ")
 		if !scanner.Scan() {
 			break
 		}
@@ -36,17 +38,12 @@ func main() {
 			break
 		}
 
-		response, er := llm.GenerateContent(ctx, []llms.MessageContent{llms.TextParts(llms.ChatMessageTypeHuman, userInput)})
+		response, er := chains.Run(ctx, chain, userInput, chains.WithTemperature(0.8))
 		if er != nil {
 			fmt.Println("Error generating response:", er)
 		}
 
-		aiResponse := response.Choices[0].Content
-		fmt.Printf("AI: %s\n\n", aiResponse)
-
-		// Store conversation in memory
-		chatMemory.ChatHistory.AddUserMessage(ctx, userInput)
-		chatMemory.ChatHistory.AddAIMessage(ctx, aiResponse)
+		fmt.Printf("AI: %s\n\n", response)
 
 	}
 
